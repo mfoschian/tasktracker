@@ -1,13 +1,7 @@
 import { ref, computed } from 'vue'
+import { getAll, upsert, remove } from './lib/LocalDb.js'
 
-const dummy_tasks = [
-	{ id: 1, description: 'Hacking NASA', category_id: 4, dt_start: new Date() },
-	{ id: 2, description: 'Sviluppo prova', category_id: 4, dt_start: new Date(), dt_end: new Date() },
-	{ id: 3, description: 'Riunione scocciante', category_id: 3, dt_start: new Date(), dt_end: new Date() },
-];
-
-
-let _tasks = ref(dummy_tasks);
+let _tasks = ref([]);
 
 const running_tasks = computed( () => {
 	return _tasks.value.filter( t => t.dt_start && t.dt_end == null );
@@ -27,43 +21,49 @@ export const Tasks = {
 		return _tasks;
 	},
 
+	load: async () => {
+		let res = await getAll('tasks');
+		_tasks.value = res;
+	},
+
 	running_tasks,
 	done_tasks,
 
-	add: (description, category_id) => {
+	add: async (description, category_id) => {
 		if (!description) return;
 	
 		const t = description.trim();
 		if (t == "") return;
 
-		const ids = _tasks.value.map(t => t.id);
-		let m = Math.max(...ids);
-		let new_id = isNaN(m) || m < 0 ? 1 : m + 1;
-		console.log( "New id is: %s", new_id );
-		
-		_tasks.value.push({
-			id: new_id,
+		const new_t = {
 			description: t,
 			dt_start: new Date(),
 			dt_end: null,
 			category_id: category_id
-		});
+		};
+
+		let dbt = await upsert('tasks', new_t );
+		_tasks.value.push( dbt );
 	},
 
-	update: (t) => {
+	update: async (t) => {
 		if( !t  || !t.id ) return;
 
+		console.log( 'Updating task with id %s', t.id );
+		let dbt = await upsert('tasks', t );
 		for( let i=0; i<_tasks.value.length; i++ ) {
 			let tsk = _tasks.value[i];
 			if( tsk.id == t.id ) {
-				_tasks.value.splice(i,1,t);
+				_tasks.value.splice(i,1,dbt);
 				return;
 			}
 		}
 	},
 
-	remove: (id) => {
+	remove: async (id) => {
 		if( !id ) return;
+
+		await remove( 'tasks', id );
 
 		for( let i=0; i<_tasks.value.length; i++ ) {
 			let tsk = _tasks.value[i];

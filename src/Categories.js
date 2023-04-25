@@ -1,13 +1,6 @@
 import { ref, computed } from 'vue'
 import { getAll, upsert, remove } from './lib/LocalDb.js'
 
-const default_categories = [
-	{ id: 1, name: 'Pausa Caffé', color: 'brown' },
-	{ id: 2, name: 'Formazione personale', color: 'green' },
-	{ id: 3, name: 'Riunione', color: 'yellow' },
-	{ id: 4, name: 'Hacking', color: 'black' },
-];
-
 let _categories = ref([]);
 
 export const Categories = {
@@ -17,13 +10,6 @@ export const Categories = {
 
 	load: async () => {
 		let res = await getAll('categories');
-		if( res.length == 0 ) {
-			for( let i=0; i<default_categories.length; i++ ) {
-				await Categories.add( default_categories[i] );
-				res.push(default_categories[i]);
-			}
-		}
-
 		_categories.value = res;
 	},
 

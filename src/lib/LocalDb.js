@@ -70,6 +70,51 @@ export function getAll(table) {
 	});
 }
 
+export class Range {
+	constructor(from, to) {
+		this.from = from;
+		this.to = to;
+		this.include = {
+			from: true,
+			to: true
+		};
+	}
+}
+
+export function getOrdered(table, index, options ) {
+	if (!_db) throw "DB not initalized";
+
+	if( !table || !index ) throw "Wrong argumento to LocalDb.getOrdered";
+
+	const o = options || {};
+	const range = o.range || null;
+	const max_records = isNaN(o.max_count) ? null : Number(o.max_count);
+
+	return new Promise( (resolve, reject) => {
+		const tx = _db.transaction( [table] );
+		let res = [];
+	
+		tx.oncomplete = () => { resolve(res); };
+		tx.onerror = (event) => { reject(event); };
+
+		const objStore = tx.objectStore( table );
+		const ix = objStore.index(index);
+
+		let query = null;
+		if( range.from && range.to )
+			query = IDBKeyRange.bound(range.from, range.to, !range.include.from, !range.include.to );
+		else if( range.from )
+			query = IDBKeyRange.lowerBound(range.from, !range.include.from );
+		else if( range.to )
+			query = IDBKeyRange.upperBound(range.to, !range.include.to );
+
+		let req = ix.getAll(query, max_records);
+		req.onsuccess = (event) => {
+			res = event.target.result;
+		};
+	});
+}
+
 export function upsert(table, value) {
 	if (!_db) throw "DB not initalized";
 
@@ -93,9 +138,8 @@ export function remove(table, key) {
 
 	return new Promise( (resolve, reject) => {
 		const tx = _db.transaction( [table], "readwrite" );
-		let res = value;
 
-		tx.oncomplete = () => { resolve(res); };
+		tx.oncomplete = () => { resolve(); };
 		tx.onerror = (event) => { reject(event); };
 
 		const objStore = tx.objectStore( table );

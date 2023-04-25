@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { getAll, upsert } from './lib/LocalDb.js'
+import { getAll, upsert, remove } from './lib/LocalDb.js'
 
 const default_categories = [
 	{ id: 1, name: 'Pausa Caffé', color: 'brown' },
@@ -28,7 +28,8 @@ export const Categories = {
 	},
 
 	add: async (value) => {
-		return await upsert('categories', value);
+		let r = await upsert('categories', value);
+		_categories.value.push( r );
 	},
 
 	sorted_names: computed(() => {
@@ -64,6 +65,37 @@ export const Categories = {
 
 	name_by_id: (id) => {
 		return id ? Categories.names.value[id] : null;
-	}
+	},
+
+	updateProp: async (id, prop, value) => {
+		if( !id  || !prop ) return;
+
+		console.log( 'Updating %s prop of category with id %s', prop, id );
+		for( let i=0; i<_categories.value.length; i++ ) {
+			let cat = _categories.value[i];
+			if( cat.id == id ) {
+				cat[prop] = value;
+				let dbc = await upsert('categories', { ...cat } );
+				_categories.value.splice(i,1,dbc);
+				return;
+			}
+		}
+	},
+
+
+	remove: async (id) => {
+		if( !id ) return;
+
+		await remove( 'categories', id );
+
+		for( let i=0; i<_categories.value.length; i++ ) {
+			let tsk = _categories.value[i];
+			if( tsk.id == id ) {
+				_categories.value.splice(i,1);
+				return;
+			}
+		}
+	},
+
 };
 

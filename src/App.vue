@@ -7,6 +7,7 @@ import { open as openDB } from './lib/LocalDb.js'
 
 // components
 import TaskEditor from './TaskEditor.vue'
+import CategoryGrid from './CategoryGrid.vue'
 
 //
 let running_tasks = Tasks.running_tasks;
@@ -16,7 +17,10 @@ let task_description = ref(null);
 openDB().then( async () => {
 	console.log( 'Database initialized');
 	await Categories.load();
-	await Tasks.load();
+
+	let today = new Date();
+	today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+	await Tasks.load(null,null,5);
 },
 (err) => {
 	console.error( err );
@@ -73,6 +77,9 @@ const delete_task = async (id) => {
 	edited_task.value = {};
 	await Tasks.remove( id );
 }
+
+let showCategories = ref(false);
+
 </script>
 
 <template>
@@ -103,6 +110,7 @@ const delete_task = async (id) => {
 
 		<!-- Task list -->
 		<div class="tasks">
+			<label>In corso:</label>
 			<template v-for="t in running_tasks" :key="t.id">
 				<div class="actions">
 					<button class="btn btn" title="Attiva" @click="stop_task(t)">
@@ -111,11 +119,14 @@ const delete_task = async (id) => {
 				</div>
 				<div class="description running" @dblclick="edit_task(t)">{{ t.description }}</div>
 				<div class="category" :style="'background-color:' + Categories.color_by_id(t.category_id) || 'inherit'"
-					:title="Categories.name_by_id(t.category_id)">
+					:title="Categories.name_by_id(t.category_id)"
+					@click="showCategories=true"
+				>
 					<!-- {{  Categories.name_by_id(t.category_id)[0]  }} -->
 				</div>
 			</template>
-
+			
+			<label>Fatti:</label>
 			<template v-for="t in done_tasks" :key="t.id">
 				<div class="actions">
 					<button class="btn btn" title="Attiva" @click="redo_task(t)">
@@ -124,10 +135,26 @@ const delete_task = async (id) => {
 				</div>
 				<div class="description done" @dblclick="edit_task(t)">{{ t.description }} - {{ Math.round(Tasks.duration(t) * 100) / 100 }} min</div>
 				<div class="category" :style="'background-color:' + Categories.color_by_id(t.category_id) || 'inherit'"
-					:title="Categories.name_by_id(t.category_id)">
-					<!-- {{  Categories.name_by_id(t.category_id)[0]  }} -->
+					:title="Categories.name_by_id(t.category_id)"
+					@click="showCategories=true"
+				>
 				</div>
 			</template>
+		</div>
+	</div>
+
+	<!-- Category editor -->
+	<div class="modal fade" :class="{ show: showCategories, 'd-block': showCategories }">
+		<div class="modal-dialog modal-xl">
+			<div class="modal-content">
+				<div class="modal-header">
+					<div class="modal-title">Categorie</div>
+					<button type="button" class="btn-close" @click="showCategories = false"></button>
+				</div>
+				<div class="modal-body">
+					<CategoryGrid />
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -175,10 +202,15 @@ const delete_task = async (id) => {
 		align-items: baseline;
 		gap: 0.3rem;
 
+		label {
+			grid-column: 1/-1;
+		}
+
 		.category {
 			width: 2rem;
 			height: 2rem;
 			border-radius: 50%;
+			cursor: pointer;
 		}
 
 		.description {

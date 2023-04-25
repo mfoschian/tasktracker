@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { getAll, upsert, remove } from './lib/LocalDb.js'
+import { getAll, upsert, remove, Range, getOrdered } from './lib/LocalDb.js'
 
 let _tasks = ref([]);
 
@@ -21,8 +21,14 @@ export const Tasks = {
 		return _tasks;
 	},
 
-	load: async () => {
-		let res = await getAll('tasks');
+	load: async (from, to, max_count) => {
+		let res;
+		if( !from && !to )
+			res = await getAll('tasks');
+		else {
+			let range = new Range(from, to);
+			res = await getOrdered('tasks', 'start_dates', { range, max_count });
+		}
 		_tasks.value = res;
 	},
 
